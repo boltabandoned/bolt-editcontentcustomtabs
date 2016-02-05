@@ -1,0 +1,20 @@
+{% if context.has.relations %}
+    {% include 'editcontent/_relationships.twig' %}
+{% endif %}
+
+
+{# Output 'incoming' relations #}
+{% for reltype, ids in context.content.relation %}
+    {% if context.contenttype.relations[reltype] is not defined %}
+        <p>{{ __('This record is related to:') }}</p>
+        <table class="table table-striped dashboardlisting">
+            {% for id in ids %}
+                {% setcontent record = reltype ~ '/' ~ id %}
+                {% if record %}
+                    {% set editable = isallowed('edit', record) %}
+                    {% include ['_sub/_listing.twig'] with {'excerptlength': 280, 'thumbsize': 54, 'compact': true, 'content': record, 'permissions': context.permissions} %}
+                {% endif %}
+            {% endfor %}
+        </table>
+    {% endif %}
+{% endfor %}

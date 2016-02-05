@@ -1,0 +1,190 @@
+{# Page: NavSecondary > Content ... > Edit #}
+
+{% import '_macro/_macro.twig' as macro %}
+
+{% extends '_base/_page-nav.twig' %}
+
+{% block page_nav 'Content/*' %}
+
+{% block page_title %}
+    {% set contenttype = {'%contenttype%': context.contenttype.slug} %}
+    {% if context.content.title is not empty %}
+        {{ __('contenttypes.generic.edit', contenttype) }}
+    {% else %}
+        {{ __('contenttypes.generic.new', contenttype) }}
+    {% endif %}
+{% endblock page_title %}
+
+{% block page_subtitle context.content.title|default('')|striptags %}
+
+{# clear default messages, because we use them in a different spot, in this template #}
+{% block messages "" %}
+
+{% block page_main %}
+    {% set status_names = {"published": __("Published"), "held": __("Not published"), "timed": __("Timed publish"), "draft": __("Draft")} %}
+
+    {% set dateChanged %}{{ macro.datetime(context.content.datechanged) }}{% endset %}
+
+    {% set bind_data = {
+        savedon:        __('Saved on:') ~ ' <strong></strong> <small>(' ~ dateChanged ~ ')</small></p>',
+        newRecord:      context.content.id != 0 ? false : true,
+        msgNotSaved:    __('contenttypes.generic.saving-impossible', {'%contenttype%': context.contenttype.slug}),
+        hasGroups:      context.has.tabs,
+        singularSlug:   context.contenttype.singular_slug,
+    } %}
+
+    {% set attr_form = {
+        _bind:   ['editcontent', bind_data],
+        class:   'form-horizontal' ~ (context.has.tabs ? ' tab-content' : ''),
+        enctype: 'multipart/form-data',
+        id:      'editcontent',
+        method:  'post',
+        role:    'form',
+    } %}
+
+    {% set alertbox %}
+        <div id="%NOTICE_ID%" class="alert alert-danger">
+            <button class="close" data-dismiss="alert">×</button>
+            <label for="%FIELD_ID%">{{ __('Field “%FIELD_NAME%”:') }}</label>
+            %MESSAGE%
+        </div>
+    {% endset %}
+
+    {{ data('validation', {
+        'alertbox':     alertbox|trim,
+        'generic_msg':  __('Is required or needs to match a pattern!'),
+    }) }}
+    {{ data('editcontent.msg', {
+        'change_quit': __('You have unfinished changes on this page. If you continue without saving, you will lose these changes.'),
+        'saving':      __('Saving …')
+    }) }}
+
+    {% set newgroups = {} %}
+    {% set defaultgroups = {
+        taxonomy: true,
+        relations: true,
+        template: false,
+        meta: true
+    } %}
+
+    {# first get the groups set in the actual contenttype and add those #}
+    {% for key, value in context.groups if key not in defaultgroups|keys %}
+        {% set newgroups = newgroups|merge({(key): value}) %}
+    {% endfor %}
+
+    {# get groups and fields from templatefields and add those to newgroups and newfields #}
+    {% set newfields = context.contenttype.fields %}
+    {% set group = context.content.get('templatefields').contenttype.fields|first.group  == 'ungrouped' ? 'template' : context.content.get('templatefields').contenttype.fields|first.group %}
+    {% for key, field in context.content.get('templatefields').contenttype.fields %}
+        {% set group = field.group  == 'ungrouped' ? group : field.group %}
+        {% set newfields = newfields|merge({(key): field|merge({ templatefield : true, group : group }) }) %}
+        {% set newgroups = newgroups|merge({(group) : {
+            'label' : group,
+            'id' : 'tab-'~app.slugify.slugify(group),
+            'is_active' : false
+        }}) %}
+    {% endfor %}
+    {% if 'template' in newgroups|keys %}
+        {% set defaultgroups = defaultgroups|merge({'template': true }) %}
+    {% endif %}
+
+    {# get groups from relations and add those #}
+    {% set groupedrelations = 0 %}
+    {% for relation in context.contenttype.relations|default([]) %}
+        {% if relation.group is defined %}
+            {% set newgroups = newgroups|merge({(relation.group) : {
+                'label' : relation.group,
+                'id' : 'tab-'~app.slugify.slugify(relation.group),
+                'is_active' : false
+            }}) %}
+            {% set groupedrelations = groupedrelations + 1 %}
+        {% endif %}
+    {% endfor %}
+    {% if groupedrelations == context.contenttype.relations|default([])|length %}
+        {% set defaultgroups = defaultgroups|merge({'relations': false }) %}
+    {% endif %}
+
+    {# get groups from taxonomies and add those #}
+    {% set groupedtaxonomies = 0 %}
+    {% for taxonomyslug in context.contenttype.taxonomy|default([]) %}
+        {% set taxonomy = config.get('taxonomy')[taxonomyslug] %}
+        {% if taxonomy is defined %}
+            {% if taxonomy.group is defined %}
+                {% set newgroups = newgroups|merge({(taxonomy.group) : {
+                    'label' : taxonomy.group,
+                    'id' : 'tab-'~app.slugify.slugify(taxonomy.group),
+                    'is_active' : false
+                }}) %}
+                {% set groupedtaxonomies = groupedtaxonomies + 1 %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    {% if groupedtaxonomies == context.contenttype.taxonomy|default([])|length %}
+        {% set defaultgroups = defaultgroups|merge({'taxonomy': false }) %}
+    {% endif %}
+
+    {# finally get the default groups and add those #}
+    {% for key, value in context.groups if key in defaultgroups|keys and defaultgroups[key] %}
+        {% set newgroups = newgroups|merge({(key): value}) %}
+    {% endfor %}
+    
+    {# override the context with new groups and the combined fields and templatefields #}
+    {% set context = context|merge({'groups': newgroups, 'contenttype': context.contenttype|merge({'fields': newfields})}) %}
+
+    <div class="row">
+        <div class="col-md-8">
+            {% include '_sub/_messages.twig' %}
+            {# Only if we have grouping tabs. #}
+            {% if context.has.tabs %}
+                <ul class="nav nav-tabs" id="filtertabs">
+                    {% for key, group in context.groups %}
+                        {% if (key not in defaultgroups|keys or defaultgroups[key]) and key != "hidden" %}
+                            <li{{ group.is_active ? ' class="active"' : '' }}>
+                                <a href="#{{ group.id }}" data-toggle="tab">{{ group.label }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <form{{ macro.attr(attr_form) }}>
+                {% include '_sub/_csrf_token.twig' %}
+                {% for group_name, group in context.groups %}
+                
+                    {% if context.has.tabs %}
+                        <div class="tab-pane{{ group.is_active ? ' active' : '' }}" id="{{ group.id }}">
+                    {% endif %}
+
+                    {% if group_name == 'meta' %}
+                        {% include 'editcontent/_meta.twig' %}
+                    {% endif %}
+
+                    {% include 'editcontent/_fields.twig' %}
+                    {% include 'editcontent/_relations.twig' %}
+                    {% include 'editcontent/_taxonomies.twig' %}
+                    
+                    {% if context.has.tabs %}
+                        </div>
+                    {% endif %}
+
+                {% endfor %}
+
+                <input type="hidden" name="_live-editor-preview" value=""/>
+
+                {% include 'editcontent/_buttons.twig' %}
+            </form>
+
+            {% include 'editcontent/_includes-data.twig' %}
+
+        </div>
+
+        <aside class="col-md-4 hidden-sm">
+            {% include 'editcontent/_aside.twig' %}
+        </aside>
+    </div>
+
+{% endblock page_main %}
+
+{% block page_main_extra_content %}
+    {% include 'editcontent/_live-editor.twig' %}
+{% endblock %}
