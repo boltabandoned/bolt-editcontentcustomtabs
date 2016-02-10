@@ -128,6 +128,16 @@
         {% set newgroups = newgroups|merge({(key): value}) %}
     {% endfor %}
     
+    {% set hasactive = false %}
+    {% for key, group in newgroups|reverse %}
+        {% if group.is_active %}
+            {% set hasactive = true %}
+        {% endif %}
+        {% if not hasactive and loop.last %}
+            {% set newgroups = newgroups|merge({ (key): group|merge({ 'is_active' : true }) }) %}
+        {% endif %}
+    {% endfor %}
+    
     {# override the context with new groups and the combined fields and templatefields #}
     {% set context = context|merge({'groups': newgroups, 'contenttype': context.contenttype|merge({'fields': newfields})}) %}
 

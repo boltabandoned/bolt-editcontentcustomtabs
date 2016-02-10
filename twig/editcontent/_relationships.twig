@@ -16,18 +16,24 @@
             {% set format = relation.format|default("{{ item.title|escape }} <span>(№ {{ item.id }})</span>") %}
 
             {{ macro.label(relation.label, relcontenttype|ucfirst, 'col-sm-4 control-label', 'relation-' ~ relcontenttype) }}
-            <div class="col-sm-8">
-
+            <div class="col-sm-8{% if relation.sortable|default(false) %} sortable-select2-container{% endif %}">
+                
                 {% if relation.multiple is defined and relation.multiple == 1 %}
                     <select name="relation[{{ relcontenttype }}][]" id="relation-{{ relcontenttype }}" class="wide" multiple style="width: 100%;" data-placeholder="{{ __('(none)') }}">
                 {% else %}
                     <select name="relation[{{ relcontenttype }}][]" id="relation-{{ relcontenttype }}" class="wide" style="width: 100%;" data-placeholder="{{ __('(none)') }}">
                         <option value="0">{{ __('(none)') }}</option>
                 {% endif %}
+                    {% if relation.sortable|default(false) %}
+                        {% set sortedRelations = getSortedRelations(context.content, context.content.contenttype.slug) %}
+                        {% set iterationset =  relationSort(sortedRelations, listcontent(relcontenttype, relation, context.content)) %}
+                    {% else %}
+                        {% set iterationset = listcontent(relcontenttype, relation, context.content) %}
+                    {% endif %}
 
                     {% set groupby = relation.groupby|default(false) %}
                     {% set optgroup = '' %}
-                    {% for item in listcontent(relcontenttype, relation, context.content) %}
+                    {% for item in iterationset %}
                         {% if relcontenttype == app.request.get('relation') and item.id == app.request.get('relationid') %}
                             {% set selectedbyrelation = true %}
                         {% else %}
@@ -47,15 +53,21 @@
                 </select>
 
                 <script>
-                    $(function() {
-                        $('#relation-{{ relcontenttype }}').select2({
-                            placeholder: "{{ __('(none)') }}",
-                            allowClear: true
-                            {% if groupby %}, formatSelection: function (item) {
-                                return $(item.element).parent().attr('label') + ': ' + item.text;
-                            }{% endif %}
+                    {% if relation.sortable %}
+                        $(function() {
+                            $('#relation-{{ relcontenttype }}').select2Sortable({});
                         });
-                    });
+                    {% else %}
+                        $(function() {
+                            $('#relation-{{ relcontenttype }}').select2({
+                                placeholder: "{{ __('(none)') }}",
+                                allowClear: true
+                                {% if groupby %}, formatSelection: function (item) {
+                                    return $(item.element).parent().attr('label') + ': ' + item.text;
+                                }{% endif %}
+                            });
+                        });
+                    {% endif %}
                 </script>
 
             </div>
