@@ -1,8 +1,11 @@
 {
     "name": "sahassar/editcontentcustomtabs",
+    "description": "This extension allows you to place templatefields, relations and taxonomies in any tab.",
     "type": "bolt-extension",
+    "keywords": [
+    ],
     "require": {
-        "bolt/bolt": ">=2.0.0,<3.0.0"
+        "bolt/bolt": "^3.0"
     },
     "license": "MIT",
     "authors": [
@@ -11,12 +14,15 @@
             "email": "svante.richter@gmail.com"
         }
     ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "autoload": {
-        "files": [
-            "init.php"
-        ],
         "psr-4": {
-            "Bolt\\Extension\\sahassar\\editcontentcustomtabs\\": ""
+            "Bolt\\Extension\\SahAssar\\Editcontentcustomtabs\\": "src"
         }
+    },
+    "extra": {
+        "bolt-assets": "web",
+        "bolt-class": "Bolt\\Extension\\SahAssar\\Editcontentcustomtabs\\EditcontentcustomtabsExtension"
     }
 }
