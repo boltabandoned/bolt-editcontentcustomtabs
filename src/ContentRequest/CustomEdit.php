@@ -188,14 +188,11 @@ class CustomEdit extends Edit
         };
 
         foreach ($contentType['groups'] ? $contentType['groups'] : ['ungrouped'] as $group) {
-            if ($group === 'ungrouped') {
-                $addGroup($group, Trans::__('contenttypes.generic.group.ungrouped'));
-            } elseif ($group !== 'meta' && $group !== 'relations' && $group !== 'taxonomy') {
-                $default = ['DEFAULT' => ucfirst($group)];
-                $key = ['contenttypes', $contentType['slug'], 'group', $group];
-                $addGroup($group, Trans::__($key, $default));
-            }
+            $default = ['DEFAULT' => ucfirst($group)];
+            $key = ['contenttypes', $contentType['slug'], 'group', $group];
+            $addGroup($group, Trans::__($key, $default));
         }
+
         /*
          * Create groups for templatefields
          */
@@ -203,9 +200,11 @@ class CustomEdit extends Edit
             $currentGroup = 'template';
             foreach ($content->getTemplatefields()->getContenttype()['fields'] as $fieldName => $field) {
                 $group = $field['group'] === 'ungrouped' ? $currentGroup : $field['group'];
-                $default = ['DEFAULT' => ucfirst($group)];
-                $key = ['contenttypes', $contentType['slug'], 'group', $group];
-                $addGroup($group, Trans::__($key, $default));
+                if (!array_key_exists($group, $groups)) {
+                    $default = ['DEFAULT' => ucfirst($group)];
+                    $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                    $addGroup($group, Trans::__($key, $default));
+                }
                 $groups[$group]['fields'][] = 'templatefield_' . $fieldName;
             }
         }
@@ -216,10 +215,12 @@ class CustomEdit extends Edit
         $currentGroup = 'relations';
         foreach ($contentType['relations'] as $relationName => $relation) {
             if (!array_key_exists($relationName, $incomingNotInverted)) {
-                $group = $relation['group'] ? $relation['group'] : $currentGroup;
-                $default = ['DEFAULT' => ucfirst($group)];
-                $key = ['contenttypes', $contentType['slug'], 'group', $group];
-                $addGroup($group, Trans::__($key, $default));
+                $group = isset($relation['group']) ? $relation['group'] : $currentGroup;
+                if (!array_key_exists($group, $groups)) {
+                    $default = ['DEFAULT' => ucfirst($group)];
+                    $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                    $addGroup($group, Trans::__($key, $default));
+                }
                 $groups[$group]['fields'][] = 'relation_' . $relationName;
             }
         }
@@ -230,10 +231,12 @@ class CustomEdit extends Edit
         $currentGroup = 'taxonomy';
         foreach ($contentType['taxonomy'] as $taxonomy) {
             $taxonomyConfig = $this->config->get('taxonomy')[$taxonomy];
-            $group = $taxonomyConfig['group'] ? $taxonomyConfig['group'] : $currentGroup;
-            $default = ['DEFAULT' => ucfirst($group)];
-            $key = ['contenttypes', $contentType['slug'], 'group', $group];
-            $addGroup($group, Trans::__($key, $default));
+            $group = isset($taxonomyConfig['group']) ? $taxonomyConfig['group'] : $currentGroup;
+            if (!array_key_exists($group, $groups)) {
+                $default = ['DEFAULT' => ucfirst($group)];
+                $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                $addGroup($group, Trans::__($key, $default));
+            }
             $groups[$group]['fields'][] = 'taxonomy_' . $taxonomy;
         }
 
