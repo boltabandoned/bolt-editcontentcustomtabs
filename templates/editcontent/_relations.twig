@@ -8,10 +8,6 @@
     </h3>
 {% endif %}
 
-{% if context.has.relations %}
-    {{ include('@bolt/editcontent/_relationships.twig') }}
-{% endif %}
-
 {# Output 'incoming' relations #}
 {% if context.has.incoming_relations %}
     {% for incoming_contenttype, incoming_records in context.incoming_not_inv if incoming_contenttype not in context.contenttype.relations|keys %}
@@ -40,10 +36,6 @@
             </table>
         </div>
     {% endfor %}
-{% endif %}
-
-{% if context.has.tabs and 'relations' in context.contenttype.groups %}
-    {{ include('@bolt/editcontent/_fields.twig') }}{
 {% endif %}
 
 {% if not context.has.tabs %}

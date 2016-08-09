@@ -37,6 +37,27 @@ class CustomEdit extends Edit
      */
     public function action(Content $content, array $contentType, $duplicate)
     {
+        /*
+         * We need to access these later down, but they are all private, so we
+         * get a reflection of the parent. 
+         */
+        $reflector = (new \ReflectionObject($this))->getParentClass();
+
+        $setCanUpload = $reflector->getMethod('setCanUpload');
+        $setCanUpload->setAccessible(true);
+        
+        $getPublishingDate = $reflector->getMethod('getPublishingDate');
+        $getPublishingDate->setAccessible(true);
+        
+        $getTemplateFieldTemplates = $reflector->getMethod('getTemplateFieldTemplates');
+        $getTemplateFieldTemplates->setAccessible(true);
+        
+        $getUsedFieldtypes = $reflector->getMethod('getUsedFieldtypes');
+        $getUsedFieldtypes->setAccessible(true);
+        
+        $getRelationsList = $reflector->getMethod('getRelationsList');
+        $getRelationsList->setAccessible(true);
+
         $contentTypeSlug = $contentType['slug'];
         $new = $content->getId() === null ?: false;
         $oldStatus = $content->getStatus();
@@ -87,10 +108,10 @@ class CustomEdit extends Edit
         }
 
         // Test write access for uploadable fields.
-        $contentType['fields'] = $this->setCanUpload($contentType['fields']);
+        $contentType['fields'] = $setCanUpload->invoke($this, $contentType['fields']);
         $templateFields = $content->getTemplatefields();
         if ($templateFields instanceof TemplateFields && $templateFieldsData = $templateFields->getContenttype()->getFields()) {
-            $templateFields->getContenttype()['fields'] = $this->setCanUpload($templateFields->getContenttype()->getFields());
+            $templateFields->getContenttype()['fields'] = $setCanUpload->invoke($this, $templateFields->getContenttype()->getFields());
         }
 
         // Build context for Twig.
@@ -108,8 +129,8 @@ class CustomEdit extends Edit
             'templatefields'     => empty($templateFieldsData) ? false : true,
         ];
         $contextValues = [
-            'datepublish'        => $this->getPublishingDate($content->getDatepublish(), true),
-            'datedepublish'      => $this->getPublishingDate($content->getDatedepublish()),
+            'datepublish'        => $getPublishingDate->invoke($this, $content->getDatepublish(), true),
+            'datedepublish'      => $getPublishingDate->invoke($this, $content->getDatedepublish()),
         ];
         $context = [
             'incoming_not_inv'   => $incomingNotInverted,
@@ -118,13 +139,17 @@ class CustomEdit extends Edit
             'allowed_status'     => $allowedStatuses,
             'contentowner'       => $contentowner,
             'fields'             => $this->config->fields->fields(),
-            'fieldtemplates'     => $this->getTemplateFieldTemplates($contentType, $content),
-            'fieldtypes'         => $this->getUsedFieldtypes($contentType, $content, $contextHas),
-            'groups'             => $this->createGroupTabs($contentType, $contextHas),
+            'fieldtemplates'     => $getTemplateFieldTemplates->invoke($this, $contentType, $content),
+            'fieldtypes'         => $getUsedFieldtypes->invoke($this, $contentType, $content, $contextHas),
+            /*
+             * Most of the heavy lifting is in createGroupTabs, but we changed
+             * the function signature to include $content and $incomingNotInverted
+             */
+            'groups'             => $this->createGroupTabs($contentType, $contextHas, $content, $incomingNotInverted),
             'can'                => $contextCan,
             'has'                => $contextHas,
             'values'             => $contextValues,
-            'relations_list'     => $this->getRelationsList($contentType),
+            'relations_list'     => $getRelationsList->invoke($this, $contentType),
         ];
 
         return $context;
@@ -132,13 +157,17 @@ class CustomEdit extends Edit
 
     /**
      * Generate tab groups.
+     * Changed to include $content and $incomingNotInverted which we need for
+     * templatefields and relations respectivley.
      *
-     * @param array $contentType
-     * @param array $has
+     * @param array   $contentType
+     * @param array   $has
+     * @param Content $content
+     * @param array   $incomingNotInverted
      *
      * @return array
      */
-    private function createGroupTabs(array $contentType, array $has)
+    private function createGroupTabs(array $contentType, array $has, Content $content, $incomingNotInverted)
     {
         $groups = [];
         $groupIds = [];
@@ -167,20 +196,45 @@ class CustomEdit extends Edit
                 $addGroup($group, Trans::__($key, $default));
             }
         }
-
-        if ($has['relations'] || $has['incoming_relations']) {
-            $addGroup('relations', Trans::__('contenttypes.generic.group.relations'));
-            $groups['relations']['fields'][] = '*relations';
+        /*
+         * Create groups for templatefields
+         */
+        if($content->getTemplatefields()){
+            $currentGroup = 'template';
+            foreach ($content->getTemplatefields()->getContenttype()['fields'] as $fieldName => $field) {
+                $group = $field['group'] === 'ungrouped' ? $currentGroup : $field['group'];
+                $default = ['DEFAULT' => ucfirst($group)];
+                $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                $addGroup($group, Trans::__($key, $default));
+                $groups[$group]['fields'][] = 'templatefield_' . $fieldName;
+            }
         }
 
-        if ($has['taxonomy'] || (is_array($contentType['groups']) && in_array('taxonomy', $contentType['groups']))) {
-            $addGroup('taxonomy', Trans::__('contenttypes.generic.group.taxonomy'));
-            $groups['taxonomy']['fields'][] = '*taxonomy';
+        /*
+         * Create groups for relations
+         */
+        $currentGroup = 'relations';
+        foreach ($contentType['relations'] as $relationName => $relation) {
+            if (!array_key_exists($relationName, $incomingNotInverted)) {
+                $group = $relation['group'] ? $relation['group'] : $currentGroup;
+                $default = ['DEFAULT' => ucfirst($group)];
+                $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                $addGroup($group, Trans::__($key, $default));
+                $groups[$group]['fields'][] = 'relation_' . $relationName;
+            }
         }
 
-        if ($has['templatefields'] || (is_array($contentType['groups']) && in_array('template', $contentType['groups']))) {
-            $addGroup('template', Trans::__('contenttypes.generic.group.template'));
-            $groups['template']['fields'][] = '*template';
+        /*
+         * Create groups for taxonomy
+         */
+        $currentGroup = 'taxonomy';
+        foreach ($contentType['taxonomy'] as $taxonomy) {
+            $taxonomyConfig = $this->config->get('taxonomy')[$taxonomy];
+            $group = $taxonomyConfig['group'] ? $taxonomyConfig['group'] : $currentGroup;
+            $default = ['DEFAULT' => ucfirst($group)];
+            $key = ['contenttypes', $contentType['slug'], 'group', $group];
+            $addGroup($group, Trans::__($key, $default));
+            $groups[$group]['fields'][] = 'taxonomy_' . $taxonomy;
         }
 
         $addGroup('meta', Trans::__('contenttypes.generic.group.meta'));

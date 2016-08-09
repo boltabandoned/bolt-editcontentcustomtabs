@@ -93,19 +93,12 @@
 
                     {% for key in group.fields %}
 
-                        {% if key == '*relations' %}
-                            {{ include('@bolt/editcontent/_relations.twig') }}
-
-                        {% elseif key == '*taxonomy' %}
-                            {{ include('@bolt/editcontent/_taxonomies.twig') }}
-
-                        {% elseif key == '*meta' %}
+                        {% if key == '*meta' %}
                             <div data-bolt-fieldset="meta">
                                 {{ include('@bolt/editcontent/fields/_meta.twig') }}
+                                <hr>
+                                {{ include('@bolt/editcontent/_relations.twig') }}
                             </div>
-
-                        {% elseif key == '*template' %}
-                            {{ include('@bolt/editcontent/_templatefields.twig') }}
 
                         {% else %}
                             {{ include('@bolt/editcontent/_field.twig') }}
