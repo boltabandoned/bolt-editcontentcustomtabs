@@ -3,7 +3,7 @@
 namespace Bolt\Extension\SahAssar\Editcontentcustomtabs;
 
 use Bolt\Extension\SimpleExtension;
-use Bolt\Application;
+use Silex\Application;
 
 /**
  * Editcontentcustomtabs extension class.
