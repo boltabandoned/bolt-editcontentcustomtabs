@@ -15,6 +15,7 @@ use Bolt\Users;
 use Cocur\Slugify\Slugify;
 use Psr\Log\LoggerInterface;
 use Bolt\Storage\ContentRequest\Edit;
+use Bolt\Storage\Mapping\ContentType;
 
 /**
  * CustomEdit class.
@@ -29,32 +30,32 @@ class CustomEdit extends Edit
     /**
      * Do the edit form for a record.
      *
-     * @param Content $content     A content record
-     * @param array   $contentType The contenttype data
-     * @param boolean $duplicate   If TRUE create a duplicate record
+     * @param Content     $content     A content record
+     * @param ContentType $contentType The contenttype data
+     * @param boolean     $duplicate   If TRUE create a duplicate record
      *
      * @return array
      */
-    public function action(Content $content, array $contentType, $duplicate)
+    public function action(Content $content, ContentType $contentType, $duplicate)
     {
         /*
          * We need to access these later down, but they are all private, so we
-         * get a reflection of the parent. 
+         * get a reflection of the parent.
          */
         $reflector = (new \ReflectionObject($this))->getParentClass();
 
         $setCanUpload = $reflector->getMethod('setCanUpload');
         $setCanUpload->setAccessible(true);
-        
+
         $getPublishingDate = $reflector->getMethod('getPublishingDate');
         $getPublishingDate->setAccessible(true);
-        
+
         $getTemplateFieldTemplates = $reflector->getMethod('getTemplateFieldTemplates');
         $getTemplateFieldTemplates->setAccessible(true);
-        
+
         $getUsedFieldtypes = $reflector->getMethod('getUsedFieldtypes');
         $getUsedFieldtypes->setAccessible(true);
-        
+
         $getRelationsList = $reflector->getMethod('getRelationsList');
         $getRelationsList->setAccessible(true);
 
@@ -160,14 +161,14 @@ class CustomEdit extends Edit
      * Changed to include $content and $incomingNotInverted which we need for
      * templatefields and relations respectivley.
      *
-     * @param array   $contentType
-     * @param array   $has
-     * @param Content $content
-     * @param array   $incomingNotInverted
+     * @param ContentType $contentType
+     * @param array       $has
+     * @param Content     $content
+     * @param array       $incomingNotInverted
      *
      * @return array
      */
-    private function createGroupTabs(array $contentType, array $has, Content $content, $incomingNotInverted)
+    private function createGroupTabs(ContentType $contentType, array $has, Content $content, $incomingNotInverted)
     {
         $groups = [];
         $groupIds = [];
@@ -212,32 +213,36 @@ class CustomEdit extends Edit
         /*
          * Create groups for relations
          */
-        $currentGroup = 'relations';
-        foreach ($contentType['relations'] as $relationName => $relation) {
-            if (!array_key_exists($relationName, $incomingNotInverted)) {
-                $group = isset($relation['group']) ? $relation['group'] : $currentGroup;
-                if (!array_key_exists($group, $groups)) {
-                    $default = ['DEFAULT' => ucfirst($group)];
-                    $key = ['contenttypes', $contentType['slug'], 'group', $group];
-                    $addGroup($group, Trans::__($key, $default));
+        if ($contentType['relations']) {
+            $currentGroup = 'relations';
+            foreach ($contentType['relations'] as $relationName => $relation) {
+                if (!array_key_exists($relationName, $incomingNotInverted)) {
+                    $group = isset($relation['group']) ? $relation['group'] : $currentGroup;
+                    if (!array_key_exists($group, $groups)) {
+                        $default = ['DEFAULT' => ucfirst($group)];
+                        $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                        $addGroup($group, Trans::__($key, $default));
+                    }
+                    $groups[$group]['fields'][] = 'relation_' . $relationName;
                 }
-                $groups[$group]['fields'][] = 'relation_' . $relationName;
             }
         }
 
         /*
          * Create groups for taxonomy
          */
-        $currentGroup = 'taxonomy';
-        foreach ($contentType['taxonomy'] as $taxonomy) {
-            $taxonomyConfig = $this->config->get('taxonomy')[$taxonomy];
-            $group = isset($taxonomyConfig['group']) ? $taxonomyConfig['group'] : $currentGroup;
-            if (!array_key_exists($group, $groups)) {
-                $default = ['DEFAULT' => ucfirst($group)];
-                $key = ['contenttypes', $contentType['slug'], 'group', $group];
-                $addGroup($group, Trans::__($key, $default));
+        if ($contentType['taxonomy']) {
+            $currentGroup = 'taxonomy';
+            foreach ($contentType['taxonomy'] as $taxonomy) {
+                $taxonomyConfig = $this->config->get('taxonomy')[$taxonomy];
+                $group = isset($taxonomyConfig['group']) ? $taxonomyConfig['group'] : $currentGroup;
+                if (!array_key_exists($group, $groups)) {
+                    $default = ['DEFAULT' => ucfirst($group)];
+                    $key = ['contenttypes', $contentType['slug'], 'group', $group];
+                    $addGroup($group, Trans::__($key, $default));
+                }
+                $groups[$group]['fields'][] = 'taxonomy_' . $taxonomy;
             }
-            $groups[$group]['fields'][] = 'taxonomy_' . $taxonomy;
         }
 
         $addGroup('meta', Trans::__('contenttypes.generic.group.meta'));
