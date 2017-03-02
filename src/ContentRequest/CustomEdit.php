@@ -194,6 +194,11 @@ class CustomEdit extends Edit
             $addGroup($group, Trans::__($key, $default));
         }
 
+        // References fields in tab group data.
+        foreach ($contentType['fields'] as $fieldName => $field) {
+            $groups[$field['group']]['fields'][] = $fieldName;
+        }
+
         /*
          * Create groups for templatefields
          */
@@ -247,11 +252,6 @@ class CustomEdit extends Edit
 
         $addGroup('meta', Trans::__('contenttypes.generic.group.meta'));
         $groups['meta']['fields'][] = '*meta';
-
-        // References fields in tab group data.
-        foreach ($contentType['fields'] as $fieldName => $field) {
-            $groups[$field['group']]['fields'][] = $fieldName;
-        }
 
         return $groups;
     }
