@@ -96,7 +96,6 @@
                     {% endif %}
 
                     {% for key in group.fields %}
-
                         {% if key == '*meta' %}
                             <div data-bolt-fieldset="meta">
                                 {{ include('@bolt/editcontent/fields/_meta.twig') }}
@@ -126,10 +125,7 @@
                         {% if key == '*meta' %}
                             <div data-bolt-fieldset="meta">
                                 {{ include('@bolt/editcontent/fields/_meta.twig') }}
-                                <hr>
-                                {{ include('@bolt/editcontent/_relations.twig') }}
                             </div>
-
                         {% else %}
                             {{ include('@bolt/editcontent/_field.twig') }}
                         {% endif %}
