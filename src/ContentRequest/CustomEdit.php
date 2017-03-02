@@ -215,6 +215,11 @@ class CustomEdit extends Edit
             }
         }
 
+        if ($has['relations'] || $has['incoming_relations']) {
+            $addGroup('relations', Trans::__('contenttypes.generic.group.relations'));
+            $groups['relations']['fields'][] = '*relations';
+        }
+
         /*
          * Create groups for relations
          */
@@ -250,6 +255,9 @@ class CustomEdit extends Edit
             }
         }
 
+        /*
+         * Add meta group/field
+         */
         $addGroup('meta', Trans::__('contenttypes.generic.group.meta'));
         $groups['meta']['fields'][] = '*meta';
 
