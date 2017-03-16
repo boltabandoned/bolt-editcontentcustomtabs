@@ -2,14 +2,14 @@
 {% set templatefields = context.content.get('templatefields') %}
 {% set field = '' %}
 {% set type = '' %}
-
 {% if 'templatefield_' in key and key|replace({'templatefield_': ''}) in templatefields.contenttype.fields|default([])|keys %}
     {% set key = key|replace({'templatefield_': ''}) %}
     {% set field = templatefields.contenttype.fields[key] %}
     {% set type = 'templatefield' %}
-{% elseif 'relation_' in key and key|replace({'relation_': ''}) in  context.contenttype.relations|default([])|keys %}
+{% elseif 'relation_' in key and key|replace({'relation_': ''}) in context.contenttype.relations|default([])|keys %}
     {% set key = key|replace({'relation_': ''}) %}
     {% set field = context.contenttype.relations[key] ? : config.get('taxonomy')[key]|default(false) %}
+
     {% set type = 'relation' %}
 {% elseif 'taxonomy_' in key and key|replace({'taxonomy_': ''}) in context.contenttype.taxonomy|default([]) %}
     {% set key = key|replace({'taxonomy_': ''}) %}

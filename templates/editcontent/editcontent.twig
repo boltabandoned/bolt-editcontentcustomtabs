@@ -63,18 +63,24 @@
 
     <div class="row">
         <div class="col-md-8">
-
             {{ include('@bolt/_sub/_messages.twig') }}
 
             {{ widgets('editcontent_below_header', 'backend') }}
-
             {# Only if we have grouping tabs. #}
             {% if context.has.tabs %}
                 <ul class="nav nav-tabs" id="filtertabs">
-                    {% for group_name, group in context.groups if group_name != 'meta' %}
+                    {% for group_name, group in context.groups if group_name != 'meta' and group_name != 'relations' %}
                         <li{{ group.is_active ? ' class="active"' : '' }} id="tabindicator-{{ group.id }}">
                             <a href="#{{ group.id }}" data-toggle="tab">{{ group.label }}</a>
                         </li>
+                    {% endfor %}
+                    {% for group_name, group in context.groups if group_name == 'relations' %}
+                        {% for relation in context.contenttype.relations|default([])|merge(context.incoming_not_inv) if not output and not relation.group %} 
+                            {% set output = true %}
+                            <li{{ group.is_active ? ' class="active"' : '' }} id="tabindicator-{{ group.id }}">
+                                <a href="#{{ group.id }}" data-toggle="tab">{{ group.label }}</a>
+                            </li>
+                        {% endfor %}
                     {% endfor %}
                     {% for group_name, group in context.groups if group_name == 'meta' %}
                         <li{{ group.is_active ? ' class="active"' : '' }} id="tabindicator-{{ group.id }}">
