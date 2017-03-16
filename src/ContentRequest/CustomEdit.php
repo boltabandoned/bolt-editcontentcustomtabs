@@ -97,12 +97,11 @@ class CustomEdit extends Edit
         // Build list of incoming non inverted related records.
         $incomingNotInverted = [];
         foreach ($content->getRelation()->incoming($content) as $relation) {
-            if ($relation->isInverted()) {
+            if ($relation->isInverted() || $relation->getFromContenttype() === $relation->getToContenttype()) {
                 continue;
             }
             $fromContentType = $relation->getFromContenttype();
             $record = $this->em->getContent($fromContentType . '/' . $relation->getFromId());
-
             if ($record) {
                 $incomingNotInverted[$fromContentType][] = $record;
             }
@@ -172,7 +171,6 @@ class CustomEdit extends Edit
     {
         $groups = [];
         $groupIds = [];
-
         $addGroup = function ($group, $label) use (&$groups, &$groupIds) {
             $nr = count($groups) + 1;
             $id = rtrim('tab-' . Slugify::create()->slugify($group), '-');
